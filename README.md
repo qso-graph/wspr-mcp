@@ -1,31 +1,149 @@
 # wspr-mcp
 
-MCP server for WSPR beacon data analytics -- band openings, path analysis, and solar correlation from 10.8 billion WSPR spots.
+MCP server for [WSPR](https://www.wsprnet.org/) (Weak Signal Propagation Reporter) beacon data — live spots, callsign activity, per-band activity, longest paths, and grid-to-grid propagation analysis through any MCP-compatible AI assistant.
 
-Part of the [qso-graph](https://qso-graph.io/) collection of amateur radio MCP servers.
-
-## Planned Tools
-
-| Tool | Description |
-|------|-------------|
-| `wspr_band_openings` | Hour-by-hour propagation for a path on a band |
-| `wspr_path_analysis` | Complete path analysis across bands, hours, months |
-| `wspr_solar_correlation` | SFI effect on propagation by band |
-| `wspr_beacon_activity` | Beacon activity and coverage maps |
-| `wspr_distance_analysis` | Distance vs SNR analysis for propagation studies |
+Part of the [qso-graph](https://qso-graph.io/) project. **No authentication required** — all public data.
 
 ## Install
-
-Coming soon. This package is not yet published to PyPI.
 
 ```bash
 pip install wspr-mcp
 ```
 
-## Data Source
+## Tools
 
-Data source TBD. May use SQLite datasets distributed via SourceForge (similar to [ionis-mcp](https://github.com/IONIS-AI/ionis-mcp)).
+| Tool | Description |
+|------|-------------|
+| `wspr_spots` | Recent WSPR spots with callsign/band filters |
+| `wspr_activity` | TX/RX activity summary for a callsign |
+| `wspr_band_activity` | Per-band spot counts, station counts, and average distance |
+| `wspr_top_paths` | Longest/best WSPR paths in the last 24 hours |
+| `wspr_propagation` | WSPR-derived propagation between two grid squares |
+
+## What is WSPR?
+
+WSPR beacons transmit a 2-minute encoded signal at very low power (typically 200 mW to 5 W). Each decoded spot proves a propagation path exists between two locations on a specific band. With thousands of beacons worldwide transmitting 24/7, WSPR provides continuous, automated propagation monitoring across all HF bands.
+
+## Quick Start
+
+No credentials needed — just install and configure your MCP client.
+
+### Configure your MCP client
+
+#### Claude Desktop
+
+Add to `claude_desktop_config.json` (`~/Library/Application Support/Claude/` on macOS, `%APPDATA%\Claude\` on Windows):
+
+```json
+{
+  "mcpServers": {
+    "wspr": {
+      "command": "wspr-mcp"
+    }
+  }
+}
+```
+
+#### Claude Code
+
+Add to `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "wspr": {
+      "command": "wspr-mcp"
+    }
+  }
+}
+```
+
+#### ChatGPT Desktop
+
+```json
+{
+  "mcpServers": {
+    "wspr": {
+      "command": "wspr-mcp"
+    }
+  }
+}
+```
+
+#### Cursor
+
+Add to `.cursor/mcp.json` (project-level) or `~/.cursor/mcp.json` (global):
+
+```json
+{
+  "mcpServers": {
+    "wspr": {
+      "command": "wspr-mcp"
+    }
+  }
+}
+```
+
+#### VS Code / GitHub Copilot
+
+Add to `.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "servers": {
+    "wspr": {
+      "command": "wspr-mcp"
+    }
+  }
+}
+```
+
+#### Gemini CLI
+
+Add to `~/.gemini/settings.json` (global) or `.gemini/settings.json` (project):
+
+```json
+{
+  "mcpServers": {
+    "wspr": {
+      "command": "wspr-mcp"
+    }
+  }
+}
+```
+
+### Ask questions
+
+> "Show me recent WSPR spots on 20m"
+
+> "What's KI7MT's WSPR activity?"
+
+> "Which bands have the most WSPR activity right now?"
+
+> "What are the longest WSPR paths in the last 24 hours?"
+
+> "Is there propagation between Idaho (DN13) and central Europe (JN48)?"
+
+## Testing Without Network
+
+```bash
+WSPR_MCP_MOCK=1 wspr-mcp
+```
+
+## MCP Inspector
+
+```bash
+wspr-mcp --transport streamable-http --port 8009
+```
+
+## Development
+
+```bash
+git clone https://github.com/qso-graph/wspr-mcp.git
+cd wspr-mcp
+pip install -e .
+```
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+GPL-3.0-or-later
