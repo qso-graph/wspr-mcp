@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.qso-graph/wspr-mcp -->
 # wspr-mcp
 
 MCP server for [WSPR](https://www.wsprnet.org/) (Weak Signal Propagation Reporter) beacon data — live spots, callsign activity, per-band activity, longest paths, and grid-to-grid propagation analysis through any MCP-compatible AI assistant.

@@ -1,6 +1,6 @@
 [project]
 name = "wspr-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP server for WSPR beacon data analytics — band openings, path analysis, solar correlation"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
