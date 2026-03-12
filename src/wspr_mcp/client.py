@@ -589,6 +589,63 @@ class WSPRClient:
         )
         rows = self._query(sql)
 
+        if not rows and tx_is_grid and rx_is_grid:
+            # Proxy fallback: widen to 2-char Maidenhead fields
+            tx_field = tx_val[:2]
+            rx_field = rx_val[:2]
+            if tx_field != tx_val or rx_field != rx_val:
+                esc_tx_f = _sql_escape(tx_field)
+                esc_rx_f = _sql_escape(rx_field)
+                proxy_filter = (
+                    f"((tx_loc LIKE '{esc_tx_f}%' AND rx_loc LIKE '{esc_rx_f}%') OR "
+                    f"(tx_loc LIKE '{esc_rx_f}%' AND rx_loc LIKE '{esc_tx_f}%'))"
+                )
+                proxy_wheres = [self._time_filter(hours), proxy_filter]
+                if bf:
+                    proxy_wheres.append(bf)
+                proxy_sql = (
+                    f"SELECT band, count() AS spots, "
+                    f"round(avg(snr), 1) AS avg_snr, "
+                    f"max(snr) AS best_snr, "
+                    f"min(snr) AS worst_snr, "
+                    f"round(avg(distance)) AS avg_dist, "
+                    f"max(distance) AS max_dist, "
+                    f"groupUniqArray(toHour(time)) AS open_hours "
+                    f"FROM wspr.rx WHERE {' AND '.join(proxy_wheres)} "
+                    f"GROUP BY band ORDER BY band "
+                    f"LIMIT 10000"
+                )
+                rows = self._query(proxy_sql)
+                if rows:
+                    proxy_bands = [
+                        {
+                            "band": _band_label(r.get("band", 0)),
+                            "spots": int(r.get("spots", 0)),
+                            "avg_snr": float(r.get("avg_snr", 0)),
+                            "best_snr": int(r.get("best_snr", 0)),
+                            "worst_snr": int(r.get("worst_snr", 0)),
+                            "avg_distance_km": int(r.get("avg_dist", 0)),
+                            "max_distance_km": int(r.get("max_dist", 0)),
+                            "hours_open": sorted(r.get("open_hours", [])),
+                        }
+                        for r in rows
+                    ]
+                    data = {
+                        "tx": tx_label, "rx": rx_label, "hours": hours,
+                        "bands": proxy_bands,
+                        "total_spots": sum(b["spots"] for b in proxy_bands),
+                        "proxy": True,
+                        "note": (
+                            f"No exact match for {tx_val}\u2194{rx_val}. "
+                            f"Showing wider field {tx_field}\u2194{rx_field}."
+                        ),
+                    }
+                    self._cache_set(
+                        f"prop:{tx_field}:{rx_field}:{hours}:{band}:proxy",
+                        data, _PATHS_TTL,
+                    )
+                    return data
+
         if not rows:
             return {
                 "tx": tx_label, "rx": rx_label, "hours": hours,
