@@ -19,7 +19,7 @@ pip install wspr-mcp
 | `wspr_band_activity` | Per-band spot counts, station counts, distances, and SNR | hours |
 | `wspr_top_beacons` | Top transmitters ranked by spot count or max distance | band, hours, sort_by (spots/distance), limit |
 | `wspr_top_spotters` | Top receivers ranked by spot count or max distance | band, hours, sort_by (spots/distance), limit |
-| `wspr_propagation` | Propagation between two locations (callsign or grid) | tx, rx, band, hours |
+| `wspr_propagation` | Propagation between two locations — auto-widens to field-level proxy for sparse endpoints | tx, rx, band, hours |
 | `wspr_grid_activity` | All WSPR activity in/out of a Maidenhead grid square | grid (2 or 4 char), band, hours |
 | `wspr_longest_paths` | Longest distance WSPR paths in a time window | band, hours, min_distance, limit |
 | `wspr_snr_trend` | Hourly SNR trend for a specific path over time | tx, rx, band, hours |
@@ -145,6 +145,8 @@ Add to `~/.gemini/settings.json` (global) or `.gemini/settings.json` (project):
 > "What are the longest WSPR paths in the last 24 hours?"
 
 > "Is there propagation between Idaho (DN13) and central Europe (JN48)?"
+
+> "Any WSPR paths between DN13 and Bouvet (JD15)?" *(auto-widens to DN↔JD if no exact match)*
 
 > "What's happening in grid square JN48?"
 
