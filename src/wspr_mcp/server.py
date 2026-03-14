@@ -45,11 +45,11 @@ def _get_client() -> WSPRClient:
 
 @mcp.tool()
 def wspr_spots(
-    callsign: str = "",
-    band: str = "",
-    hours: int = 24,
-    limit: int = 50,
-    grid: str = "",
+    callsign: str | None = "",
+    band: str | None = "",
+    hours: int | None = 24,
+    limit: int | None = 50,
+    grid: str | None = "",
     min_snr: int | None = None,
     max_snr: int | None = None,
     min_distance: int | None = None,
@@ -73,6 +73,12 @@ def wspr_spots(
         List of spots with TX/RX callsigns, grids, band, SNR, distance, power.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        callsign = callsign or ""
+        band = band or ""
+        hours = hours if hours is not None else 24
+        limit = limit if limit is not None else 50
+        grid = grid or ""
         spots = _get_client().spots(
             callsign=callsign, band=band, hours=hours, limit=limit,
             grid=grid, min_snr=min_snr, max_snr=max_snr,
@@ -89,7 +95,7 @@ def wspr_spots(
 
 
 @mcp.tool()
-def wspr_band_activity(hours: int = 1) -> dict[str, Any]:
+def wspr_band_activity(hours: int | None = 1) -> dict[str, Any]:
     """Get per-band WSPR activity summary.
 
     Shows spot counts, TX/RX station counts, average and max distance,
@@ -103,6 +109,8 @@ def wspr_band_activity(hours: int = 1) -> dict[str, Any]:
         Per-band activity with spot counts, station counts, distances, and SNR.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        hours = hours if hours is not None else 1
         data = _get_client().band_activity(hours=hours)
         return {"hours": hours, "bands": data}
     except Exception as e:
@@ -116,10 +124,10 @@ def wspr_band_activity(hours: int = 1) -> dict[str, Any]:
 
 @mcp.tool()
 def wspr_top_beacons(
-    band: str = "",
-    hours: int = 24,
-    sort_by: str = "spots",
-    limit: int = 20,
+    band: str | None = "",
+    hours: int | None = 24,
+    sort_by: str | None = "spots",
+    limit: int | None = 20,
 ) -> dict[str, Any]:
     """Get top WSPR transmitters ranked by spot count or max distance.
 
@@ -136,6 +144,11 @@ def wspr_top_beacons(
         Ranked list of transmitters with spot counts, reporters, max distance, bands.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        band = band or ""
+        hours = hours if hours is not None else 24
+        sort_by = sort_by or "spots"
+        limit = limit if limit is not None else 20
         beacons = _get_client().top_beacons(
             band=band, hours=hours, sort_by=sort_by, limit=limit,
         )
@@ -151,10 +164,10 @@ def wspr_top_beacons(
 
 @mcp.tool()
 def wspr_top_spotters(
-    band: str = "",
-    hours: int = 24,
-    sort_by: str = "spots",
-    limit: int = 20,
+    band: str | None = "",
+    hours: int | None = 24,
+    sort_by: str | None = "spots",
+    limit: int | None = 20,
 ) -> dict[str, Any]:
     """Get top WSPR receivers ranked by spot count or max distance.
 
@@ -171,6 +184,11 @@ def wspr_top_spotters(
         Ranked list of receivers with spot counts, unique heard, max distance, bands.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        band = band or ""
+        hours = hours if hours is not None else 24
+        sort_by = sort_by or "spots"
+        limit = limit if limit is not None else 20
         spotters = _get_client().top_spotters(
             band=band, hours=hours, sort_by=sort_by, limit=limit,
         )
@@ -188,8 +206,8 @@ def wspr_top_spotters(
 def wspr_propagation(
     tx: str,
     rx: str,
-    band: str = "",
-    hours: int = 24,
+    band: str | None = "",
+    hours: int | None = 24,
 ) -> dict[str, Any]:
     """Get WSPR-derived propagation between two locations.
 
@@ -207,6 +225,9 @@ def wspr_propagation(
         Per-band propagation with spot counts, SNR stats, and UTC hours open.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        band = band or ""
+        hours = hours if hours is not None else 24
         return _get_client().propagation(tx=tx, rx=rx, band=band, hours=hours)
     except Exception as e:
         return {"error": str(e)}
@@ -220,9 +241,9 @@ def wspr_propagation(
 @mcp.tool()
 def wspr_grid_activity(
     grid: str,
-    band: str = "",
-    hours: int = 24,
-    limit: int = 50,
+    band: str | None = "",
+    hours: int | None = 24,
+    limit: int | None = 50,
 ) -> dict[str, Any]:
     """Get all WSPR activity in or out of a Maidenhead grid square.
 
@@ -240,6 +261,10 @@ def wspr_grid_activity(
         Summary stats (totals, stations, bands) plus recent spot list.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        band = band or ""
+        hours = hours if hours is not None else 24
+        limit = limit if limit is not None else 50
         return _get_client().grid_activity(
             grid=grid, band=band, hours=hours, limit=limit,
         )
@@ -254,10 +279,10 @@ def wspr_grid_activity(
 
 @mcp.tool()
 def wspr_longest_paths(
-    band: str = "",
-    hours: int = 24,
-    limit: int = 20,
-    min_distance: int = 0,
+    band: str | None = "",
+    hours: int | None = 24,
+    limit: int | None = 20,
+    min_distance: int | None = 0,
 ) -> dict[str, Any]:
     """Get the longest WSPR paths in the given time window.
 
@@ -274,6 +299,11 @@ def wspr_longest_paths(
         Paths ranked by distance, with callsigns, grids, band, SNR, power.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        band = band or ""
+        hours = hours if hours is not None else 24
+        limit = limit if limit is not None else 20
+        min_distance = min_distance if min_distance is not None else 0
         paths = _get_client().longest_paths(
             band=band, hours=hours, limit=limit, min_distance=min_distance,
         )
@@ -291,8 +321,8 @@ def wspr_longest_paths(
 def wspr_snr_trend(
     tx: str,
     rx: str,
-    band: str = "",
-    hours: int = 24,
+    band: str | None = "",
+    hours: int | None = 24,
 ) -> dict[str, Any]:
     """Get SNR trend over time for a specific WSPR path.
 
@@ -310,6 +340,9 @@ def wspr_snr_trend(
         Hourly SNR data points with spot counts, avg/best/worst SNR per hour.
     """
     try:
+        # Coerce None → defaults (llama.cpp/mcpo sends null for optional params)
+        band = band or ""
+        hours = hours if hours is not None else 24
         return _get_client().snr_trend(tx=tx, rx=rx, band=band, hours=hours)
     except Exception as e:
         return {"error": str(e)}
