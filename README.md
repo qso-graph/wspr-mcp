@@ -23,6 +23,7 @@ pip install wspr-mcp
 | `wspr_grid_activity` | All WSPR activity in/out of a Maidenhead grid square | grid (2 or 4 char), band, hours |
 | `wspr_longest_paths` | Longest distance WSPR paths in a time window | band, hours, min_distance, limit |
 | `wspr_snr_trend` | Hourly SNR trend for a specific path over time | tx, rx, band, hours |
+| `get_version_info` | Service version + upstream spec version (fleet identity attestation) | — |
 
 ## What is WSPR?
 
