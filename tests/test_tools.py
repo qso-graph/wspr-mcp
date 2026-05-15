@@ -268,3 +268,48 @@ class TestEdgeCases:
         """WSPR-L2-045: Band filter with value returns SQL fragment."""
         result = WSPRClient._band_filter(14)
         assert result == "band = 14"
+
+
+# ---------------------------------------------------------------------------
+# WSPR-L2-046..050: get_version_info — fleet identity attestation
+# ---------------------------------------------------------------------------
+
+
+class TestGetVersionInfo:
+    """Tracks IONIS-AI/ionis-devel#49 — fleet get_version_info convention."""
+
+    def test_returns_service_name(self):
+        """WSPR-L2-046: payload includes service_name = 'wspr-mcp'."""
+        from wspr_mcp.server import _version_info_payload
+
+        assert _version_info_payload()["service_name"] == "wspr-mcp"
+
+    def test_returns_service_version(self):
+        """WSPR-L2-047: service_version matches package __version__."""
+        from wspr_mcp import __version__
+        from wspr_mcp.server import _version_info_payload
+
+        assert _version_info_payload()["service_version"] == __version__
+
+    def test_returns_spec_version(self):
+        """WSPR-L2-048: spec_version pins the wspr.live ClickHouse schema."""
+        from wspr_mcp.server import _version_info_payload
+
+        assert _version_info_payload()["spec_version"] == "wspr-live-v1"
+
+    def test_payload_keys_are_required_set(self):
+        """WSPR-L2-049: payload has exactly the required keys (no extras yet)."""
+        from wspr_mcp.server import _version_info_payload
+
+        result = _version_info_payload()
+        required = {"service_name", "service_version", "spec_version"}
+        assert required.issubset(set(result.keys()))
+
+    def test_all_values_are_strings(self):
+        """WSPR-L2-050: all returned values are strings (JSON-safe envelope)."""
+        from wspr_mcp.server import _version_info_payload
+
+        result = _version_info_payload()
+        for k in ("service_name", "service_version", "spec_version"):
+            assert isinstance(result[k], str), f"{k} should be str, got {type(result[k])}"
+            assert result[k], f"{k} should be non-empty"
