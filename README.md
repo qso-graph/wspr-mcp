@@ -1,6 +1,9 @@
 <!-- mcp-name: io.github.qso-graph/wspr-mcp -->
 # wspr-mcp
 
+[![PyPI](https://img.shields.io/pypi/v/wspr-mcp?label=PyPI&color=blue)](https://pypi.org/project/wspr-mcp/)
+[![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0%2Fservers%3Fsearch%3Dwspr-mcp&query=%24.servers%5B0%5D.server.version&label=MCP%20Registry&color=blue)](https://registry.modelcontextprotocol.io/v0/servers?search=wspr-mcp)
+
 MCP server for [WSPR](https://www.wsprnet.org/) (Weak Signal Propagation Reporter) beacon data — live spots, band activity, top beacons, propagation paths, SNR trends, and more through any MCP-compatible AI assistant.
 
 Data from [wspr.live](https://wspr.live/) (~2.7 billion spots, 2008-present). Part of the [qso-graph](https://qso-graph.io/) project. **No authentication required** — all public data.

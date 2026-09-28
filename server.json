@@ -6,12 +6,12 @@
     "url": "https://github.com/qso-graph/wspr-mcp",
     "source": "github"
   },
-  "version": "0.1.1",
+  "version": "0.3.3",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "wspr-mcp",
-      "version": "0.1.1",
+      "version": "0.3.3",
       "transport": { "type": "stdio" }
     }
   ],
