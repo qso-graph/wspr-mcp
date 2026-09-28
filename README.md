@@ -11,7 +11,8 @@ Data from [wspr.live](https://wspr.live/) (~2.7 billion spots, 2008-present). Pa
 ## Install
 
 ```bash
-pip install wspr-mcp
+uvx wspr-mcp            # run it; nothing to install
+pip install wspr-mcp    # or install it into your own environment
 ```
 
 ## Tools
@@ -64,7 +65,8 @@ Add to `claude_desktop_config.json` (`~/Library/Application Support/Claude/` on 
 {
   "mcpServers": {
     "wspr": {
-      "command": "wspr-mcp"
+      "command": "uvx",
+      "args": ["wspr-mcp"]
     }
   }
 }
@@ -78,7 +80,8 @@ Add to `.claude/settings.json`:
 {
   "mcpServers": {
     "wspr": {
-      "command": "wspr-mcp"
+      "command": "uvx",
+      "args": ["wspr-mcp"]
     }
   }
 }
@@ -90,7 +93,8 @@ Add to `.claude/settings.json`:
 {
   "mcpServers": {
     "wspr": {
-      "command": "wspr-mcp"
+      "command": "uvx",
+      "args": ["wspr-mcp"]
     }
   }
 }
@@ -104,7 +108,8 @@ Add to `.cursor/mcp.json` (project-level) or `~/.cursor/mcp.json` (global):
 {
   "mcpServers": {
     "wspr": {
-      "command": "wspr-mcp"
+      "command": "uvx",
+      "args": ["wspr-mcp"]
     }
   }
 }
@@ -118,7 +123,8 @@ Add to `.vscode/mcp.json` in your workspace:
 {
   "servers": {
     "wspr": {
-      "command": "wspr-mcp"
+      "command": "uvx",
+      "args": ["wspr-mcp"]
     }
   }
 }
@@ -132,11 +138,14 @@ Add to `~/.gemini/settings.json` (global) or `.gemini/settings.json` (project):
 {
   "mcpServers": {
     "wspr": {
-      "command": "wspr-mcp"
+      "command": "uvx",
+      "args": ["wspr-mcp"]
     }
   }
 }
 ```
+
+Installed with pip instead? Use `"command": "wspr-mcp"` in any config above.
 
 ### Ask questions
 
@@ -175,7 +184,8 @@ wspr-mcp --transport streamable-http --port 8009
 ```bash
 git clone https://github.com/qso-graph/wspr-mcp.git
 cd wspr-mcp
-pip install -e .
+uv sync --group dev
+uv run pytest
 ```
 
 ## License

@@ -35,6 +35,10 @@ Issues = "https://github.com/qso-graph/wspr-mcp/issues"
 [project.scripts]
 wspr-mcp = "wspr_mcp.server:main"
 
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
