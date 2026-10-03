@@ -12,7 +12,6 @@ Data from [wspr.live](https://wspr.live/) (~2.7 billion spots, 2008-present). Pa
 
 ```bash
 uvx wspr-mcp            # run it; nothing to install
-pip install wspr-mcp    # or install it into your own environment
 ```
 
 ## Tools
@@ -144,8 +143,6 @@ Add to `~/.gemini/settings.json` (global) or `.gemini/settings.json` (project):
   }
 }
 ```
-
-Installed with pip instead? Use `"command": "wspr-mcp"` in any config above.
 
 ### Ask questions
 
