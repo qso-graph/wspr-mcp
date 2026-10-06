@@ -1,6 +1,6 @@
 [project]
 name = "wspr-mcp"
-version = "0.3.3"
+version = "0.3.4"
 description = "MCP server for WSPR beacon data analytics — band openings, path analysis, solar correlation"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
@@ -28,7 +28,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://qso-graph.io"
-Documentation = "https://qso-graph.io"
+Documentation = "https://qso-graph.io/servers/wspr/"
 Repository = "https://github.com/qso-graph/wspr-mcp"
 Issues = "https://github.com/qso-graph/wspr-mcp/issues"
 
