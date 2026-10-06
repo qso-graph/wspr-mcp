@@ -28,7 +28,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://qso-graph.io"
-Documentation = "https://qso-graph.io"
+Documentation = "https://qso-graph.io/servers/wspr/"
 Repository = "https://github.com/qso-graph/wspr-mcp"
 Issues = "https://github.com/qso-graph/wspr-mcp/issues"
 
