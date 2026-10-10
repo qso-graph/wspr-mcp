@@ -124,7 +124,7 @@ def _sql_escape(s: str) -> str:
 # Mock data
 # ---------------------------------------------------------------------------
 
-_MOCK_SPOTS = [
+_MOCK_SPOTS: list[dict[str, Any]] = [
     {"time": "2026-03-04 21:00:00", "band": "20m", "tx_call": "KI7MT",
      "tx_grid": "DN13", "rx_call": "KPH", "rx_grid": "CM87",
      "snr": -12, "distance_km": 742, "power_dbm": 23, "drift": 0},
@@ -247,7 +247,8 @@ class WSPRClient:
             raise RuntimeError(f"wspr.live query error: {body[:200]}")
 
         self._cb.record_success()
-        return result.get("data", [])
+        rows: list[dict[str, Any]] = result.get("data", [])
+        return rows
 
     # -- helpers for WHERE clauses ------------------------------------------
 
@@ -284,7 +285,7 @@ class WSPRClient:
         limit = _clamp(limit, 1, 200)
 
         key = f"spots:{call}:{band}:{grid_prefix}:{hours}:{min_snr}:{max_snr}:{min_distance}:{limit}"
-        cached = self._cache_get(key)
+        cached: list[dict[str, Any]] | None = self._cache_get(key)
         if cached is not None:
             return cached
 
@@ -352,7 +353,7 @@ class WSPRClient:
         hours = _clamp(hours, 1, _MAX_HOURS_BAND)
 
         key = f"band_activity:{hours}"
-        cached = self._cache_get(key)
+        cached: list[dict[str, Any]] | None = self._cache_get(key)
         if cached is not None:
             return cached
 
@@ -403,7 +404,7 @@ class WSPRClient:
         order = "max_dist DESC" if sort_by == "distance" else "spots DESC"
 
         key = f"top_beacons:{band}:{hours}:{sort_by}:{limit}"
-        cached = self._cache_get(key)
+        cached: list[dict[str, Any]] | None = self._cache_get(key)
         if cached is not None:
             return cached
 
@@ -462,7 +463,7 @@ class WSPRClient:
         order = "max_dist DESC" if sort_by == "distance" else "spots DESC"
 
         key = f"top_spotters:{band}:{hours}:{sort_by}:{limit}"
-        cached = self._cache_get(key)
+        cached: list[dict[str, Any]] | None = self._cache_get(key)
         if cached is not None:
             return cached
 
@@ -539,7 +540,7 @@ class WSPRClient:
             return {"error": "Both tx and rx are required (callsign or 4-char grid)"}
 
         key = f"prop:{tx_val}:{rx_val}:{hours}:{band}"
-        cached = self._cache_get(key)
+        cached: dict[str, Any] | None = self._cache_get(key)
         if cached is not None:
             return cached
 
@@ -617,7 +618,7 @@ class WSPRClient:
                 )
                 rows = self._query(proxy_sql)
                 if rows:
-                    proxy_bands = [
+                    proxy_bands: list[dict[str, Any]] = [
                         {
                             "band": _band_label(r.get("band", 0)),
                             "spots": int(r.get("spots", 0)),
@@ -653,7 +654,7 @@ class WSPRClient:
                 "note": "No WSPR paths found between these endpoints in the time window",
             }
 
-        bands = [
+        bands: list[dict[str, Any]] = [
             {
                 "band": _band_label(r.get("band", 0)),
                 "spots": int(r.get("spots", 0)),
@@ -698,7 +699,7 @@ class WSPRClient:
         limit = _clamp(limit, 1, 200)
 
         key = f"grid:{grid_prefix}:{band}:{hours}:{limit}"
-        cached = self._cache_get(key)
+        cached: dict[str, Any] | None = self._cache_get(key)
         if cached is not None:
             return cached
 
@@ -785,7 +786,7 @@ class WSPRClient:
         min_distance = max(0, int(min_distance))
 
         key = f"longest:{band}:{hours}:{min_distance}:{limit}"
-        cached = self._cache_get(key)
+        cached: list[dict[str, Any]] | None = self._cache_get(key)
         if cached is not None:
             return cached
 
@@ -853,7 +854,7 @@ class WSPRClient:
             return {"error": "Both tx and rx are required (callsign or 4-char grid)"}
 
         key = f"snr_trend:{tx_val}:{rx_val}:{band}:{hours}"
-        cached = self._cache_get(key)
+        cached: dict[str, Any] | None = self._cache_get(key)
         if cached is not None:
             return cached
 

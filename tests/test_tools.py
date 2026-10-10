@@ -9,23 +9,23 @@ Test IDs: WSPR-L2-001 through WSPR-L2-045
 from __future__ import annotations
 
 import os
+
 import pytest
 
 # Enable mock mode before importing anything
 os.environ["WSPR_MCP_MOCK"] = "1"
 
 from wspr_mcp.client import (
+    _BAND_MHZ,
     WSPRClient,
+    _band_label,
     _CircuitBreaker,
+    _clamp,
+    _sql_escape,
+    _validate_band,
     _validate_callsign,
     _validate_grid,
-    _validate_band,
-    _clamp,
-    _band_label,
-    _sql_escape,
-    _BAND_MHZ,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
