@@ -313,3 +313,33 @@ class TestGetVersionInfo:
         for k in ("service_name", "service_version", "spec_version"):
             assert isinstance(result[k], str), f"{k} should be str, got {type(result[k])}"
             assert result[k], f"{k} should be non-empty"
+
+
+class TestTlsAtRuntime:
+    """What the built context actually is.
+
+    `test_security.py` reads the source for this, because the release gate runs
+    that file with the package not installed. These assertions need the real
+    object, so they live here. Follows `meteor-mcp`.
+    """
+
+    def test_verification_is_on(self):
+        """WSPR-L2-060: CERT_REQUIRED, and the hostname is checked."""
+        import ssl
+
+        from wspr_mcp.client import _context
+
+        context = _context()
+        assert context.verify_mode == ssl.CERT_REQUIRED
+        assert context.check_hostname is True
+
+    def test_the_root_store_actually_loaded(self):
+        """WSPR-L2-061: an empty store fails closed and looks like an outage.
+
+        Worse here than elsewhere: a failed query also trips the circuit
+        breaker, so an empty root set would keep the server refusing for the
+        breaker's window with nothing pointing at trust.
+        """
+        from wspr_mcp.client import _context
+
+        assert _context().cert_store_stats()["x509_ca"] > 100

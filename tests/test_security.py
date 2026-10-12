@@ -79,3 +79,72 @@ def test_no_eval_exec():
                 continue
             if re.search(r'\b(?:eval|exec)\s*\(', stripped):
                 assert False, f"eval/exec in {py_file.name}:{i}: {stripped.strip()}"
+
+
+def _code_only(path: Path) -> str:
+    """The file with comments and string literals removed.
+
+    Some checks must read what the code *does*, not what it says about itself.
+    `_context()` carries a docstring explaining that `ssl.CERT_NONE` would be
+    the wrong fix, and a plain text search cannot tell that sentence apart from
+    the thing it warns against.
+    """
+    import tokenize
+
+    kept = []
+    with path.open("rb") as handle:
+        for token in tokenize.tokenize(handle.readline):
+            if token.type in (tokenize.COMMENT, tokenize.STRING):
+                continue
+            kept.append(token.string)
+    return " ".join(kept)
+
+
+def test_tls_verification_is_never_disabled():
+    """Guarantee #8: no context here stops checking certificates.
+
+    `ssl.CERT_NONE` or `check_hostname = False` would make a failing call
+    "work", by accepting any certificate from anyone — a worse defect than the
+    one qso-graph-devel#73 fixes, and an invisible one.
+
+    Read off the source, like every check in this file: the release gate runs it
+    with the package *not installed* (`pip install pytest pip-audit`), so
+    nothing here may import `wspr_mcp`. The runtime assertions live in
+    test_tools.py, which runs with the package present. Both are needed.
+    """
+    forbidden = re.compile(r"CERT_NONE|check_hostname\s*=\s*False|_create_unverified")
+    for py_file in _py_files():
+        matches = forbidden.findall(_code_only(py_file))
+        assert not matches, f"TLS verification weakened in {py_file.name}: {matches}"
+
+
+def test_the_root_set_is_carried_not_borrowed():
+    """Guarantee #8: the roots come from certifi, not the host's OpenSSL store.
+
+    macOS ships `/etc/ssl/cert.pem` for OpenSSL — and therefore for Python — as
+    a deliberately reduced file: 128 roots against the system keychain's 158. A
+    certificate chaining to one of the 30 it omits fails for Python while
+    `curl` to the same URL succeeds.
+    """
+    client = (SRC_DIR / "wspr_mcp" / "client.py").read_text()
+    assert "cafile=certifi.where()" in client
+
+
+def test_every_outbound_call_verifies():
+    """Guarantee #8: a new fetch path cannot quietly skip the context.
+
+    Line by line rather than by matching balanced parentheses: a regex for the
+    whole call ends at the first ")", which is the one inside "_context()", so
+    it would read a call that passes no context as though it did. That is how
+    this check was first written in solar-mcp, and only running the
+    falsification caught it.
+    """
+    content = (SRC_DIR / "wspr_mcp" / "client.py").read_text()
+    calls = [(i, line) for i, line in enumerate(content.splitlines(), 1)
+             if "urllib.request.urlopen(" in line]
+    assert calls, "no urlopen call found; has the query path moved?"
+    for number, line in calls:
+        assert "context=_context()" in line, (
+            f"client.py:{number} opens a connection without a verifying context: "
+            f"{line.strip()}"
+        )
