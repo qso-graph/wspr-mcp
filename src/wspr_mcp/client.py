@@ -16,15 +16,48 @@ from __future__ import annotations
 import json
 import os
 import re
+import ssl
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
+from functools import cache
 from typing import Any
+
+import certifi
 
 from . import __version__
 
 _DB_URL = "https://db1.wspr.live"
+
+
+@cache
+def _context() -> ssl.SSLContext:
+    """A verifying context with a current root set. Built once.
+
+    The roots come from ``certifi`` rather than whichever store the running
+    Python was built against. On macOS that distinction is real: Apple ships
+    ``/etc/ssl/cert.pem`` for OpenSSL — and therefore for Python — as a
+    deliberately *reduced* file, 128 roots against the system keychain's 158.
+    It is current, not stale. But a certificate chaining to one of the 30 it
+    omits fails for Python while ``curl`` to the same URL succeeds, and the
+    user is told only that the source could not be reached
+    (qso-graph-devel#73, found when meteor-mcp could not reach NASA at all).
+
+    db1.wspr.live verifies fine against the reduced file today, so this is a
+    latent defect rather than an outage: the day any CA in the chain rotates to
+    a root Apple omits, this server stops working on macOS — and because a
+    failed query also trips the circuit breaker, it would stay refused for the
+    breaker's window with nothing pointing at trust as the cause.
+
+    Verification is never disabled. ``ssl.CERT_NONE`` or ``check_hostname =
+    False`` would also make a call "work", by accepting any certificate from
+    anyone — a worse defect than this one, and an invisible one. The fix is a
+    complete root set, not a relaxed check.
+    """
+    return ssl.create_default_context(cafile=certifi.where())
+
 
 # ---------------------------------------------------------------------------
 # Rate limiting: 20 req/min = 1 request per 3 seconds
@@ -227,9 +260,9 @@ class WSPRClient:
         req.add_header("User-Agent", f"wspr-mcp/{__version__}")
 
         try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
+            with urllib.request.urlopen(req, timeout=20, context=_context()) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
-        except urllib.error.URLError as exc:
+        except (urllib.error.URLError, ssl.SSLError) as exc:
             self._cb.record_failure()
             raise RuntimeError(
                 "wspr.live query failed — service may be down"
@@ -284,7 +317,10 @@ class WSPRClient:
         hours = _clamp(hours, 1, _MAX_HOURS_SPOTS)
         limit = _clamp(limit, 1, 200)
 
-        key = f"spots:{call}:{band}:{grid_prefix}:{hours}:{min_snr}:{max_snr}:{min_distance}:{limit}"
+        key = (
+            f"spots:{call}:{band}:{grid_prefix}:{hours}:"
+            f"{min_snr}:{max_snr}:{min_distance}:{limit}"
+        )
         cached: list[dict[str, Any]] | None = self._cache_get(key)
         if cached is not None:
             return cached
@@ -537,7 +573,7 @@ class WSPRClient:
             rx_label = rx_val
 
         if not tx_val or not rx_val:
-            return {"error": "Both tx and rx are required (callsign or 4-char grid)"}
+            raise ValueError("Both tx and rx are required (callsign or 4-char grid)")
 
         key = f"prop:{tx_val}:{rx_val}:{hours}:{band}"
         cached: dict[str, Any] | None = self._cache_get(key)
@@ -691,7 +727,7 @@ class WSPRClient:
         """All WSPR spots involving a Maidenhead grid square."""
         grid_prefix = _validate_grid(grid)
         if not grid_prefix:
-            return {"error": "Grid square is required (2 or 4 characters)"}
+            raise ValueError("Grid square is required (2 or 4 characters)")
         # Use 2 or 4 char prefix as provided
         grid_prefix = grid_prefix[:4] if len(grid_prefix) >= 4 else grid_prefix[:2]
         band_mhz = _validate_band(band)
@@ -851,7 +887,7 @@ class WSPRClient:
             rx_val = _validate_callsign(rx)
 
         if not tx_val or not rx_val:
-            return {"error": "Both tx and rx are required (callsign or 4-char grid)"}
+            raise ValueError("Both tx and rx are required (callsign or 4-char grid)")
 
         key = f"snr_trend:{tx_val}:{rx_val}:{band}:{hours}"
         cached: dict[str, Any] | None = self._cache_get(key)

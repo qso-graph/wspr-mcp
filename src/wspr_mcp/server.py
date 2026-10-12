@@ -11,6 +11,7 @@ import sys
 from typing import Any
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 
 from . import __spec_version__, __version__
 from .client import WSPRClient
@@ -20,7 +21,8 @@ mcp = FastMCP(
     version=__version__,
     instructions=(
         "MCP server for WSPR (Weak Signal Propagation Reporter) beacon data. "
-        "8 tools: live spots, band activity, top beacons, top spotters, "
+        "9 tools: version info, live spots, band activity, top beacons, "
+        "top spotters, "
         "path propagation, grid activity, longest paths, and SNR trends. "
         "Data from wspr.live (~2.7B spots, 2008-present). "
         "All public data, no authentication required. "
@@ -38,6 +40,34 @@ def _get_client() -> WSPRClient:
     return _client
 
 
+# MCP 2026-07-28 tool annotations. The defaults are pessimistic — a tool that
+# declares nothing is advertised as destructive, non-idempotent and open-world,
+# and the specification tells a client to keep a human in the loop for an
+# operation like that. So a client would be entitled to put a confirmation
+# prompt in front of reading a beacon spot. Every tool here reads and none
+# writes, so the three effect hints are the same for all of them; only
+# openWorldHint differs, and it is read per tool.
+#
+# They are a client's UX hint and never a security control: the specification
+# requires clients to treat them as untrusted, so none of this replaces the
+# callsign and grid validation in client.py.
+_READS_WSPR_LIVE = {
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": True,
+    # Reaches db1.wspr.live, which is outside this host — and a volunteer-run
+    # service this server is rate limited to 20 req/min against.
+    "openWorldHint": True,
+}
+_ANSWERS_FROM_THE_PACKAGE = {
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": True,
+    # Reports versions carried in the wheel. It opens no connection.
+    "openWorldHint": False,
+}
+
+
 # ---------------------------------------------------------------------------
 # Tool 0: get_version_info — fleet identity attestation
 # ---------------------------------------------------------------------------
@@ -53,7 +83,7 @@ def _version_info_payload() -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=_ANSWERS_FROM_THE_PACKAGE)
 def get_version_info() -> dict[str, Any]:
     """Get wspr-mcp service version and upstream spec version.
 
@@ -74,7 +104,7 @@ def get_version_info() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_spots(
     callsign: str | None = "",
     band: str | None = "",
@@ -117,7 +147,7 @@ def wspr_spots(
         )
         return {"total": len(spots), "hours": hours, "spots": spots}
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +155,7 @@ def wspr_spots(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_band_activity(hours: int | None = 1) -> dict[str, Any]:
     """Get per-band WSPR activity summary.
 
@@ -145,7 +175,7 @@ def wspr_band_activity(hours: int | None = 1) -> dict[str, Any]:
         data = _get_client().band_activity(hours=hours)
         return {"hours": hours, "bands": data}
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +183,7 @@ def wspr_band_activity(hours: int | None = 1) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_top_beacons(
     band: str | None = "",
     hours: int | None = 24,
@@ -185,7 +215,7 @@ def wspr_top_beacons(
         )
         return {"total": len(beacons), "hours": hours, "sort_by": sort_by, "beacons": beacons}
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +223,7 @@ def wspr_top_beacons(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_top_spotters(
     band: str | None = "",
     hours: int | None = 24,
@@ -223,9 +253,12 @@ def wspr_top_spotters(
         spotters = _get_client().top_spotters(
             band=band, hours=hours, sort_by=sort_by, limit=limit,
         )
-        return {"total": len(spotters), "hours": hours, "sort_by": sort_by, "spotters": spotters}
+        return {
+            "total": len(spotters), "hours": hours,
+            "sort_by": sort_by, "spotters": spotters,
+        }
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +266,7 @@ def wspr_top_spotters(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_propagation(
     tx: str,
     rx: str,
@@ -261,7 +294,7 @@ def wspr_propagation(
         hours = hours if hours is not None else 24
         return _get_client().propagation(tx=tx, rx=rx, band=band, hours=hours)
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +302,7 @@ def wspr_propagation(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_grid_activity(
     grid: str,
     band: str | None = "",
@@ -300,7 +333,7 @@ def wspr_grid_activity(
             grid=grid, band=band, hours=hours, limit=limit,
         )
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +341,7 @@ def wspr_grid_activity(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_longest_paths(
     band: str | None = "",
     hours: int | None = 24,
@@ -340,7 +373,7 @@ def wspr_longest_paths(
         )
         return {"total": len(paths), "hours": hours, "paths": paths}
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +381,7 @@ def wspr_longest_paths(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations=_READS_WSPR_LIVE)
 def wspr_snr_trend(
     tx: str,
     rx: str,
@@ -376,7 +409,7 @@ def wspr_snr_trend(
         hours = hours if hours is not None else 24
         return _get_client().snr_trend(tx=tx, rx=rx, band=band, hours=hours)
     except Exception as e:
-        return {"error": str(e)}
+        raise ToolError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
