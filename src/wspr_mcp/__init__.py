@@ -1,4 +1,7 @@
-"""MCP server for WSPR beacon data analytics — band openings, path analysis, solar correlation."""
+"""MCP server for WSPR beacon data analytics.
+
+Band openings, path analysis and solar correlation.
+"""
 
 from __future__ import annotations
 

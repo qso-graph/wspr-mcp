@@ -317,7 +317,10 @@ class WSPRClient:
         hours = _clamp(hours, 1, _MAX_HOURS_SPOTS)
         limit = _clamp(limit, 1, 200)
 
-        key = f"spots:{call}:{band}:{grid_prefix}:{hours}:{min_snr}:{max_snr}:{min_distance}:{limit}"
+        key = (
+            f"spots:{call}:{band}:{grid_prefix}:{hours}:"
+            f"{min_snr}:{max_snr}:{min_distance}:{limit}"
+        )
         cached: list[dict[str, Any]] | None = self._cache_get(key)
         if cached is not None:
             return cached
