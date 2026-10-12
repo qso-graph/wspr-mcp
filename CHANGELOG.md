@@ -5,6 +5,31 @@ All notable changes to `wspr-mcp` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **Tool execution errors are flagged `isError`** (#22). Every tool returned `{"error": "..."}` on
+  failure, which reaches a client as a *successful* call whose payload happens to contain the word
+  "error". The specification says why that matters: otherwise "the LLM would not be able to see
+  that an error occurred and self-correct". They now raise `ToolError`, which `fastmcp` reports as
+  `isError: true` with the message intact. **No decision changed — only how it is reported.** A
+  query matching nothing is still a successful answer with `total: 0`; a quiet band is a result,
+  not a failure.
+- **Every tool declares all four annotation hints** (#22). Declaring nothing is not neutral: the
+  defaults advertise a tool as `destructiveHint: true`, `openWorldHint: true` and not idempotent,
+  and the specification tells clients to keep a human in the loop for operations like that — so a
+  client was entitled to put a confirmation prompt in front of reading a beacon spot. All nine are
+  read-only, non-destructive and idempotent; `openWorldHint` is read per tool, true for the eight
+  that query `db1.wspr.live` and false for `get_version_info`, which reports what the wheel
+  carries. Annotations are a client's UX hint and never a security control.
+- **Fixed: the instructions said eight tools when there were nine.** The count was written when
+  there were eight and never moved. A client reads the instructions before calling anything, and
+  nobody asserted this, so it drifted the moment a tool was added.
+- **`tests/test_mcp_conformance.py`** asserts all of the above, following `adif-mcp`'s file of the
+  same name — including, for this repo specifically, that **the request limit named in the
+  instructions is the one the client enforces**. CLAUDE.md makes wspr-mcp the fleet's pattern for
+  honouring and naming a provider's stated limit; wspr.live states 20 req/min and `_MIN_DELAY` is
+  3.0 seconds, and the test holds the two together so the sentence a user reads stays true.
+
 ## [0.3.6] — 2026-10-11
 
 - **ruff and mypy run in CI** (qso-graph-devel#66), as a job the `ci-all-green` gate requires.

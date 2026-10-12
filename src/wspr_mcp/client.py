@@ -537,7 +537,7 @@ class WSPRClient:
             rx_label = rx_val
 
         if not tx_val or not rx_val:
-            return {"error": "Both tx and rx are required (callsign or 4-char grid)"}
+            raise ValueError("Both tx and rx are required (callsign or 4-char grid)")
 
         key = f"prop:{tx_val}:{rx_val}:{hours}:{band}"
         cached: dict[str, Any] | None = self._cache_get(key)
@@ -691,7 +691,7 @@ class WSPRClient:
         """All WSPR spots involving a Maidenhead grid square."""
         grid_prefix = _validate_grid(grid)
         if not grid_prefix:
-            return {"error": "Grid square is required (2 or 4 characters)"}
+            raise ValueError("Grid square is required (2 or 4 characters)")
         # Use 2 or 4 char prefix as provided
         grid_prefix = grid_prefix[:4] if len(grid_prefix) >= 4 else grid_prefix[:2]
         band_mhz = _validate_band(band)
@@ -851,7 +851,7 @@ class WSPRClient:
             rx_val = _validate_callsign(rx)
 
         if not tx_val or not rx_val:
-            return {"error": "Both tx and rx are required (callsign or 4-char grid)"}
+            raise ValueError("Both tx and rx are required (callsign or 4-char grid)")
 
         key = f"snr_trend:{tx_val}:{rx_val}:{band}:{hours}"
         cached: dict[str, Any] | None = self._cache_get(key)
