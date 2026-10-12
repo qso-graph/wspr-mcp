@@ -6,7 +6,8 @@ source tree rather than import it, so they hold whatever the environment has.
 `ci.yml` meanwhile runs `pytest tests --ignore=tests/test_security.py`.
 
 Between them, `test_security.py` executes in exactly one place, and it is the
-one where `import wspr_mcp` raises. `ci.yml` here *does* run that file, but with the package installed — so a test
+one where `import wspr_mcp` raises. `ci.yml` here *does* run that file, but
+with the package installed — so a test
 that imports `wspr_mcp` passes CI and fails the publish, which is the trap.
 
 It is not hypothetical. On 2026-10-12 two such tests were added to solar-mcp's

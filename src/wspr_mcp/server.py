@@ -253,7 +253,10 @@ def wspr_top_spotters(
         spotters = _get_client().top_spotters(
             band=band, hours=hours, sort_by=sort_by, limit=limit,
         )
-        return {"total": len(spotters), "hours": hours, "sort_by": sort_by, "spotters": spotters}
+        return {
+            "total": len(spotters), "hours": hours,
+            "sort_by": sort_by, "spotters": spotters,
+        }
     except Exception as e:
         raise ToolError(str(e)) from e
 

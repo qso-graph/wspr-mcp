@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **`E501` is adopted** (#21, qso-graph-devel#70). It was deliberately ignored while the rules that
+  find defects went in first; this is the pass of its own that deferral was waiting for. It reported
+  **five lines in this repo, none of them a defect**, and all five reflowed — **no exemption was
+  needed here**, unlike `adif-mcp` and `solar-mcp`, because no line is long by virtue of naming a
+  publisher's field. Formatting and config only; no behaviour change.
+
 - **`certifi` is carried, and the query verifies against it** (#20, qso-graph-devel#73). The query
   used `urllib` with no context, so it trusted whichever root store the running Python was built
   against. On macOS that is `/etc/ssl/cert.pem`, a deliberately *reduced* OpenSSL file — 128 roots
