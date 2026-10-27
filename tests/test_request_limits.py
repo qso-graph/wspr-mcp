@@ -287,3 +287,34 @@ def test_the_spacing_sleep_does_not_hold_the_lock() -> None:
         cl._lock.release()
     assert acquired, "the lock was held for the whole spacing sleep"
     assert held < c._MIN_DELAY, f"waited {held:.3f}s for the lock"
+
+
+def test_a_success_does_not_clear_a_429_block(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Found in QG Desktop by Bob, where a slower in-flight request's success
+    cleared the block its faster twin had just armed.
+
+    It does not happen here, because the breaker's record_success touches only
+    its own failure count and backoff, on its own lock, and cannot reach the
+    client's _blocked_until. This asserts that separation rather than trusting
+    it: merging the two mechanisms is the refactor that would reintroduce it,
+    and the symptom -- asking a provider again inside the interval it asked us
+    to wait -- is invisible from here.
+    """
+    cl = c.WSPRClient()
+    cl._last_request = time.monotonic() - 10.0
+    monkeypatch.setattr(
+        c.urllib.request, "urlopen", _raises(_http_error(429, Retry_After="300"))
+    )
+    with pytest.raises(c.RateLimited):
+        cl._query("SELECT 1")
+    armed = cl._blocked_until
+    assert armed > 0
+
+    # A success arriving afterwards, as an in-flight query would bring back.
+    cl._cb.record_success()
+    assert cl._blocked_until == armed, "a success cleared the 429 block"
+
+    # And the block is still enforced.
+    cl._last_request = time.monotonic() - 10.0
+    with pytest.raises(c.RateLimited):
+        cl._query("SELECT 2")
