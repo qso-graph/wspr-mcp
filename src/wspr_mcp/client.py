@@ -14,6 +14,7 @@ public ClickHouse instance at db1.wspr.live.  We follow their guidelines:
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import ssl
@@ -61,8 +62,62 @@ def _context() -> ssl.SSLContext:
 
 # ---------------------------------------------------------------------------
 # Rate limiting: 20 req/min = 1 request per 3 seconds
+#
+# This is wspr.live's own stated figure, which is why it is 3.0 s where the
+# fleet's judgement default against a service that states nothing is 0.2 s. It
+# is named in the server description so a user can see whose limit it is.
 # ---------------------------------------------------------------------------
 _MIN_DELAY = 3.0
+
+# ---------------------------------------------------------------------------
+# What to do when wspr.live says stop
+#
+# A 429 carrying Retry-After is wspr.live stating its limit at runtime rather
+# than in its documentation, and honouring it is the same guarantee. It is kept
+# apart from the circuit breaker below on purpose: the breaker counts failures
+# of the service, and a 429 is not one -- it is the service working and telling
+# us to ease off. Counting it as a failure reported a rate limit as "the service
+# may be down" and, after three, opened the breaker on a healthy server.
+# See qso-graph-devel/planning/MCP-SECURITY-FRAMEWORK.md.
+# ---------------------------------------------------------------------------
+_MIN_BACKOFF = 60.0
+_MAX_BACKOFF = 3600.0
+
+
+class RateLimited(RuntimeError):
+    """wspr.live asked us to stop. The message is safe to show a user.
+
+    A RuntimeError subclass so callers that already handle this client's
+    failures keep working, and so FastMCP flags the tool result isError either
+    way.
+    """
+
+    def __init__(self, wait: float) -> None:
+        self.retry_after = max(1, round(wait))
+        super().__init__(
+            "wspr.live is rate limiting this client; try again in "
+            f"{self.retry_after} s"
+        )
+
+
+def _retry_after(header: str | None) -> float:
+    """Seconds to wait, from a Retry-After header, clamped to our bounds.
+
+    Retry-After may also be an HTTP date. That form is not parsed and falls back
+    to the floor rather than guessing, because a wrong parse would either hammer
+    a volunteer-run service or strand the user.
+    """
+    try:
+        seconds = float(header) if header else 0.0
+    except ValueError:
+        seconds = 0.0
+    # "nan" and "inf" parse as floats, and nan defeats the clamp below: every
+    # comparison against it is False, so it would survive to be added to a
+    # deadline that is then never in the future, leaving the block off
+    # altogether. A header we cannot make sense of means the floor.
+    if not math.isfinite(seconds):
+        seconds = 0.0
+    return min(max(seconds, _MIN_BACKOFF), _MAX_BACKOFF)
 
 # ---------------------------------------------------------------------------
 # Circuit breaker — back off on consecutive errors
@@ -223,6 +278,9 @@ class WSPRClient:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._last_request: float = 0.0
+        # Set by a 429: no query goes out before this. Separate from the
+        # circuit breaker, which counts failures of the service.
+        self._blocked_until: float = 0.0
         self._cache: dict[str, tuple[float, Any]] = {}
         self._cb = _CircuitBreaker()
 
@@ -242,12 +300,30 @@ class WSPRClient:
         self._cache[key] = (time.monotonic() + ttl, value)
 
     def _rate_limit(self) -> None:
-        with self._lock:
-            now = time.monotonic()
-            elapsed = now - self._last_request
-            if elapsed < _MIN_DELAY:
-                time.sleep(_MIN_DELAY - elapsed)
-            self._last_request = time.monotonic()
+        """Space requests out, or refuse if wspr.live has told us to stop.
+
+        The 3 s gap is slept, because that is what pacing is for. An interval
+        asked for by a 429 is not: this server answers a synchronous tool call
+        behind a client timeout, so sleeping out a minute or an hour inside one
+        is a hang rather than restraint.
+
+        The spacing sleep is taken *outside* the lock, and the loop re-reads
+        the state after it. Without the re-read, a request that a 429 arriving
+        during the sleep had just forbidden would still go out -- the check
+        would have been made before the wait rather than before the request.
+        """
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                remaining = self._blocked_until - now
+                if remaining > 0:
+                    raise RateLimited(remaining)
+                elapsed = now - self._last_request
+                if elapsed >= _MIN_DELAY:
+                    self._last_request = now
+                    return
+                delay = _MIN_DELAY - elapsed
+            time.sleep(delay)
 
     def _query(self, sql: str) -> list[dict[str, Any]]:
         """Execute a SELECT against db1.wspr.live, return rows as dicts."""
@@ -262,6 +338,30 @@ class WSPRClient:
         try:
             with urllib.request.urlopen(req, timeout=20, context=_context()) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            # Ahead of the URLError clause, which HTTPError is a subclass of --
+            # without this a 429 was recorded as a failure of the service and
+            # reported as "service may be down", and three of them opened the
+            # circuit breaker on a server that was working fine.
+            #
+            # No breaker failure is recorded for a 429: it is not one. 503
+            # counts as a limit only when it carries Retry-After, which is a
+            # provider shedding load deliberately; a bare 503 is an outage and
+            # falls through, where recording a failure is right.
+            if exc.code == 429 or (exc.code == 503 and exc.headers.get("Retry-After")):
+                # An outstanding block is never shortened: a response asking for
+                # 60 s that lands while a 300 s block is still running must not
+                # release us at 60. The wait raised is the one actually in force.
+                asked = _retry_after(exc.headers.get("Retry-After"))
+                with self._lock:
+                    now = time.monotonic()
+                    self._blocked_until = max(self._blocked_until, now + asked)
+                    wait = self._blocked_until - now
+                raise RateLimited(wait) from None
+            self._cb.record_failure()
+            raise RuntimeError(
+                "wspr.live query failed — service may be down"
+            ) from exc
         except (urllib.error.URLError, ssl.SSLError) as exc:
             self._cb.record_failure()
             raise RuntimeError(

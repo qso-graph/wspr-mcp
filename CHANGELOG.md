@@ -5,6 +5,27 @@ All notable changes to `wspr-mcp` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **A `429` from wspr.live is no longer treated as the service failing.**
+  `HTTPError` is a subclass of `URLError`, so a 429 was caught by the clause
+  that records a circuit-breaker failure and reported as "wspr.live query failed
+  — service may be down". Three of them opened the breaker on a server that was
+  working fine and telling us, correctly, to ease off. A 429 now has its own
+  path: the `Retry-After` interval is read and bounded to between a minute and
+  an hour, nothing more is sent until it has passed, the message says how long,
+  and no breaker failure is recorded — because a rate limit is not a failure of
+  the service. A bare `503` still is, and still counts.
+
+### Changed
+
+- The 3-second gap between queries is still slept, because 20 req/min is
+  wspr.live's own stated limit and pacing is what the gap is for. An interval a
+  429 asks for is not slept: a tool call is synchronous and behind a client
+  timeout, so waiting out a minute or an hour inside one is a hang.
+
 ## [0.5.0] — 2026-10-26
 
 ### Changed
