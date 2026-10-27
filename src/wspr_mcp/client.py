@@ -14,6 +14,7 @@ public ClickHouse instance at db1.wspr.live.  We follow their guidelines:
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import ssl
@@ -109,6 +110,12 @@ def _retry_after(header: str | None) -> float:
     try:
         seconds = float(header) if header else 0.0
     except ValueError:
+        seconds = 0.0
+    # "nan" and "inf" parse as floats, and nan defeats the clamp below: every
+    # comparison against it is False, so it would survive to be added to a
+    # deadline that is then never in the future, leaving the block off
+    # altogether. A header we cannot make sense of means the floor.
+    if not math.isfinite(seconds):
         seconds = 0.0
     return min(max(seconds, _MIN_BACKOFF), _MAX_BACKOFF)
 
@@ -295,21 +302,28 @@ class WSPRClient:
     def _rate_limit(self) -> None:
         """Space requests out, or refuse if wspr.live has told us to stop.
 
-        The 3 s gap is slept, because that is the stated limit and pacing is
-        what it is for. An interval asked for by a 429 is not: this server
-        answers a synchronous tool call behind a client timeout, so sleeping out
-        a minute or an hour inside one is a hang rather than restraint.
+        The 3 s gap is slept, because that is what pacing is for. An interval
+        asked for by a 429 is not: this server answers a synchronous tool call
+        behind a client timeout, so sleeping out a minute or an hour inside one
+        is a hang rather than restraint.
+
+        The spacing sleep is taken *outside* the lock, and the loop re-reads
+        the state after it. Without the re-read, a request that a 429 arriving
+        during the sleep had just forbidden would still go out -- the check
+        would have been made before the wait rather than before the request.
         """
-        with self._lock:
-            remaining = self._blocked_until - time.monotonic()
-        if remaining > 0:
-            raise RateLimited(remaining)
-        with self._lock:
-            now = time.monotonic()
-            elapsed = now - self._last_request
-            if elapsed < _MIN_DELAY:
-                time.sleep(_MIN_DELAY - elapsed)
-            self._last_request = time.monotonic()
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                remaining = self._blocked_until - now
+                if remaining > 0:
+                    raise RateLimited(remaining)
+                elapsed = now - self._last_request
+                if elapsed >= _MIN_DELAY:
+                    self._last_request = now
+                    return
+                delay = _MIN_DELAY - elapsed
+            time.sleep(delay)
 
     def _query(self, sql: str) -> list[dict[str, Any]]:
         """Execute a SELECT against db1.wspr.live, return rows as dicts."""
@@ -335,9 +349,14 @@ class WSPRClient:
             # provider shedding load deliberately; a bare 503 is an outage and
             # falls through, where recording a failure is right.
             if exc.code == 429 or (exc.code == 503 and exc.headers.get("Retry-After")):
-                wait = _retry_after(exc.headers.get("Retry-After"))
+                # An outstanding block is never shortened: a response asking for
+                # 60 s that lands while a 300 s block is still running must not
+                # release us at 60. The wait raised is the one actually in force.
+                asked = _retry_after(exc.headers.get("Retry-After"))
                 with self._lock:
-                    self._blocked_until = time.monotonic() + wait
+                    now = time.monotonic()
+                    self._blocked_until = max(self._blocked_until, now + asked)
+                    wait = self._blocked_until - now
                 raise RateLimited(wait) from None
             self._cb.record_failure()
             raise RuntimeError(
