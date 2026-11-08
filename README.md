@@ -4,9 +4,9 @@
 [![PyPI](https://img.shields.io/pypi/v/wspr-mcp?label=PyPI&color=blue)](https://pypi.org/project/wspr-mcp/)
 [![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0%2Fservers%3Fsearch%3Dio.github.qso-graph%2Fwspr-mcp%26version%3Dlatest&query=%24.servers%5B0%5D.server.version&label=MCP%20Registry&color=blue)](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.qso-graph/wspr-mcp&version=latest)
 
-MCP server for [WSPR](https://www.wsprnet.org/) (Weak Signal Propagation Reporter) beacon data — live spots, band activity, top beacons, propagation paths, SNR trends, and more through any MCP-compatible AI assistant.
+MCP server for [WSPR](https://www.wsprnet.org/) (Weak Signal Propagation Reporter) beacon data—live spots, band activity, top beacons, propagation paths, SNR trends, and more through any MCP-compatible AI assistant.
 
-Data from [wspr.live](https://wspr.live/) (~2.7 billion spots, 2008-present). Part of the [qso-graph](https://qso-graph.io/) project. **No authentication required** — all public data.
+Data from [wspr.live](https://wspr.live/) (~2.7 billion spots, 2008-present). Part of the [qso-graph](https://qso-graph.io/) project. **No authentication required**—all public data.
 
 ## Install
 
@@ -22,7 +22,7 @@ uvx wspr-mcp            # run it; nothing to install
 | `wspr_band_activity` | Per-band spot counts, station counts, distances, and SNR | hours |
 | `wspr_top_beacons` | Top transmitters ranked by spot count or max distance | band, hours, sort_by (spots/distance), limit |
 | `wspr_top_spotters` | Top receivers ranked by spot count or max distance | band, hours, sort_by (spots/distance), limit |
-| `wspr_propagation` | Propagation between two locations — auto-widens to field-level proxy for sparse endpoints | tx, rx, band, hours |
+| `wspr_propagation` | Propagation between two locations—auto-widens to field-level proxy for sparse endpoints | tx, rx, band, hours |
 | `wspr_grid_activity` | All WSPR activity in/out of a Maidenhead grid square | grid (2 or 4 char), band, hours |
 | `wspr_longest_paths` | Longest distance WSPR paths in a time window | band, hours, min_distance, limit |
 | `wspr_snr_trend` | Hourly SNR trend for a specific path over time | tx, rx, band, hours |
@@ -41,18 +41,18 @@ wspr.live is a volunteer-run service that mirrors all wsprnet.org data into a pu
 | **Rate limiting** | 3 seconds between requests (20 req/min max) |
 | **Circuit breaker** | Opens after 3 consecutive failures; exponential backoff up to 5 minutes. Prevents hammering a struggling service. |
 | **Time-bounded queries** | Every query filters by time (max 72 hours). No unbounded full-table scans. |
-| **Band filtering** | Queries filter by band whenever the user provides one — this hits wspr.live's indexes efficiently. |
+| **Band filtering** | Queries filter by band whenever the user provides one—this hits wspr.live's indexes efficiently. |
 | **Column selection** | We SELECT only the columns each tool needs (8-10 per query), never `SELECT *`. |
 | **Result limits** | All queries cap results (200 spots, 50 leaderboard entries). |
 | **Response caching** | 2-10 minute TTL per tool. Identical queries within the window hit local cache with zero network traffic. |
-| **Request timeout** | 20-second timeout — we don't hold connections open on a shared service. |
+| **Request timeout** | 20-second timeout—we don't hold connections open on a shared service. |
 | **User-Agent header** | Every request identifies itself as `wspr-mcp/{version}` so the operators can reach us if needed. |
 
 If wspr.live is down or overloaded, the circuit breaker backs off automatically. We don't retry in a tight loop.
 
 ## Quick Start
 
-No credentials needed — just install and configure your MCP client.
+No credentials needed—just install and configure your MCP client.
 
 ### Configure your MCP client
 
