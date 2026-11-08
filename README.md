@@ -32,9 +32,9 @@ uvx wspr-mcp            # run it; nothing to install
 
 WSPR beacons transmit a 2-minute encoded signal at very low power (typically 200 mW to 5 W). Each decoded spot proves a propagation path exists between two locations on a specific band. With thousands of beacons worldwide transmitting 24/7, WSPR provides continuous, automated propagation monitoring across all HF bands.
 
-## Good Neighbour Policy
+## Good Neighbor Policy
 
-wspr.live is a volunteer-run service that mirrors all wsprnet.org data into a public ClickHouse database. We take our responsibility as a good neighbour seriously:
+wspr.live is a volunteer-run service that mirrors all wsprnet.org data into a public ClickHouse database. We take our responsibility as a good neighbor seriously:
 
 | Measure | Detail |
 |---------|--------|
